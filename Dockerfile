@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Add Xpra Official Repository (Winswitch) - ROBUST METHOD
+# 2. Add Xpra Official Repository (Winswitch)
 # We use the official list file and key to ensure we don't fallback to Ubuntu's old v3.1
 RUN mkdir -p /usr/share/keyrings && \
     wget -q -O /usr/share/keyrings/xpra.asc https://xpra.org/gpg.asc && \
@@ -26,8 +26,8 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearm
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" \
     > /etc/apt/sources.list.d/google-chrome.list
 
-# 4. Install Xpra and Chrome
-# We check version to ensure we got the new one (v4/v5/v6), not v3.
+# 4. Install Xpra, Chrome and Dependencies
+# We install aioquic via pip to ensure UDP/QUIC support works in Xpra v6.
 RUN apt-get update && apt-get install -y \
     xpra \
     xvfb \
@@ -36,12 +36,14 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libvpx7 \
     libwebp7 \
+    python3-pip \
+    && pip3 install aioquic netifaces \
     && xpra --version \
     && rm -rf /var/lib/apt/lists/*
 
 # 5. Setup User (Robust Method)
 RUN \
-    # Remove default 'ubuntu' user
+    # Remove default 'ubuntu' user (occupies UID 1000)
     touch /var/mail/ubuntu && chown ubuntu /var/mail/ubuntu && userdel -r ubuntu || true && \
     # Handle 'xpra' Group
     if getent group xpra >/dev/null 2>&1; then \
