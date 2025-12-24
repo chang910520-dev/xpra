@@ -57,13 +57,9 @@ echo "Running Xpra Version:"
 xpra --version
 echo "================================================="
 
-# 5. Start Xpra
-# --bind-tcp: Listen on TCP 10000
-# --bind-udp: Listen on UDP 10000 (QUIC/UDP)
-# --auth: Use the password file we just created
-# --ssl-cert: Use our generated cert
-# --start: Launch Chrome
-# --daemon=no: Keep in foreground for Docker
+# 5. Start Xpra (v6 Modern Syntax)
+# We use --bind=TYPE://IP:PORT/ syntax which replaces the old --bind-tcp/udp flags.
+# Note: When UDP is bound, Xpra automatically attempts to load the aioquic module.
 exec xpra start :100 \
     --daemon=no \
     --mdns=no \
@@ -74,8 +70,8 @@ exec xpra start :100 \
     --audio=no \
     --printing=no \
     --file-transfer=no \
-    --bind-tcp=0.0.0.0:10000 \
-    --bind-udp=0.0.0.0:10000 \
+    --bind=tcp://0.0.0.0:10000/ \
+    --bind=udp://0.0.0.0:10000/ \
     --auth=file:filename="$PASS_FILE" \
     --ssl=$XPRA_SSL \
     --ssl-cert="$CERT_DIR/server.pem" \
