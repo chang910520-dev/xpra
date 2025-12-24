@@ -1,5 +1,5 @@
 FROM ubuntu:22.04
-  
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV XPRA_PORT=10000
 ENV DISPLAY=:100
@@ -16,7 +16,6 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Add Xpra Official Repository (Winswitch)
-# Providing much better performance and UDP support than Ubuntu default
 RUN wget -q https://xpra.org/gpg.asc -O- | gpg --dearmor > /usr/share/keyrings/xpra.gpg && \
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/xpra.gpg] https://xpra.org/ jammy main" > /etc/apt/sources.list.d/xpra.list
 
@@ -37,7 +36,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 5. Setup User
-# Running as root is dangerous for Chrome. We create a dedicated user.
+# FIX: Remove default 'ubuntu' user (UID 1000) if it exists to avoid conflict
+RUN touch /var/mail/ubuntu && chown ubuntu /var/mail/ubuntu && userdel -r ubuntu || true
+
+# Now safe to create xpra with UID 1000
 RUN useradd -m -u 1000 -s /bin/bash xpra && \
     mkdir -p /data /run/user/1000/xpra && \
     chown -R xpra:xpra /data /run/user/1000
