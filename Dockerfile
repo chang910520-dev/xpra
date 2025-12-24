@@ -25,6 +25,7 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearm
     > /etc/apt/sources.list.d/google-chrome.list
 
 # 4. Install Xpra and Chrome
+# Note: Installing xpra here might create a system user 'xpra' automatically.
 RUN apt-get update && apt-get install -y \
     xpra \
     xvfb \
@@ -35,12 +36,24 @@ RUN apt-get update && apt-get install -y \
     libwebp7 \
     && rm -rf /var/lib/apt/lists/*
 
-# 5. Setup User
-# FIX: Remove default 'ubuntu' user (UID 1000) if it exists to avoid conflict
-RUN touch /var/mail/ubuntu && chown ubuntu /var/mail/ubuntu && userdel -r ubuntu || true
-
-# Now safe to create xpra with UID 1000
-RUN useradd -m -u 1000 -s /bin/bash xpra && \
+# 5. Setup User (Robust Method)
+# We want 'xpra' user to have UID 1000 for permission ease.
+RUN \
+    # A. Remove default 'ubuntu' user (occupies UID 1000)
+    touch /var/mail/ubuntu && chown ubuntu /var/mail/ubuntu && userdel -r ubuntu || true && \
+    # B. Handle Group 'xpra'
+    if getent group xpra >/dev/null 2>&1; then \
+        groupmod -g 1000 xpra; \
+    else \
+        groupadd -g 1000 xpra; \
+    fi && \
+    # C. Handle User 'xpra'
+    if id xpra >/dev/null 2>&1; then \
+        usermod -u 1000 -g 1000 -s /bin/bash -d /home/xpra -m xpra; \
+    else \
+        useradd -u 1000 -g 1000 -m -s /bin/bash xpra; \
+    fi && \
+    # D. Setup directories and permissions
     mkdir -p /data /run/user/1000/xpra && \
     chown -R xpra:xpra /data /run/user/1000
 
