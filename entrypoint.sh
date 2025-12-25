@@ -9,13 +9,8 @@ PROFILE_DIR="$DATA_DIR/chrome-profile"
 
 mkdir -p "$CERT_DIR" "$PROFILE_DIR"
 
-# === 1. 密码逻辑 (保持你原来的逻辑) ===
-if [ -z "$XPRA_PASS" ]; then
-    echo "⚠️  XPRA_PASS not set. Generating random password..."
-    XPRA_PASS=$(openssl rand -base64 16)
-fi
-
-# 将密码写入文件，供 Xpra 读取
+# === 1. 密码逻辑 ===
+XPRA_PASS=${XPRA_PASS:-123456}
 echo "$XPRA_PASS" > "$PASS_FILE"
 chmod 600 "$PASS_FILE"
 
@@ -23,17 +18,16 @@ echo "================================================="
 echo "🔒 XPRA PASSWORD: $XPRA_PASS"
 echo "================================================="
 
-# === 2. SSL 证书逻辑 (保持你原来的逻辑并修正合并) ===
+# === 2. SSL 证书逻辑 (修正了 openssl 拼写) ===
 if [ ! -f "$CERT_DIR/server.pem" ]; then
     echo "🔑 Generating self-signed SSL certificate..."
-    opensmal req -x509 -newkey rsa:4096 -nodes \
+    openssl req -x509 -newkey rsa:4096 -nodes \
         -keyout "$CERT_DIR/key.temp" \
         -out "$CERT_DIR/cert.temp" \
         -days 3650 \
         -subj "/CN=xpra-chrome" \
         -sha256
     
-    # 合并为 Xpra 需要的 PEM 格式
     cat "$CERT_DIR/key.temp" "$CERT_DIR/cert.temp" > "$CERT_DIR/server.pem"
     rm "$CERT_DIR/key.temp" "$CERT_DIR/cert.temp"
     chmod 600 "$CERT_DIR/server.pem"
@@ -43,9 +37,7 @@ fi
 rm -rf /run/user/$(id -u)/xpra
 mkdir -p /run/user/$(id -u)/xpra
 
-# === 4. 核心配置校准 (针对 Cloudflare 隧道优化) ===
-# 强制开启 HTML5 以支持 WebSocket (wss://) 连接
-# 强制关闭内部 SSL (由 Cloudflare 在外部提供 SSL)
+# === 4. 强制配置校准 ===
 XPRA_HTML="on"
 XPRA_SSL="off"
 
@@ -56,9 +48,8 @@ echo "Running Xpra Version:"
 xpra --version
 echo "================================================="
 
-# === 5. 启动 Xpra (关键修正点) ===
-# 修正点 A: 将 --bind=tcp:// 还原为 --bind-tcp，彻底解决 Xpra 创建路径而不监听端口的 Bug
-# 修正点 B: 保留你原来的所有功能开关 (mdns, webcam, etc.)
+# === 5. 启动 Xpra ===
+# 使用 --bind-tcp 这种最稳的语法
 exec xpra start :100 \
     --daemon=no \
     --mdns=no \
